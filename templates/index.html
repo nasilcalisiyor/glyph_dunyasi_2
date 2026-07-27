@@ -12,7 +12,7 @@
   html, body {
     height: 100%;
     margin: 0;
-    background: #0b0b0d;
+    background: #000000;
     color: #e8e8e8;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
@@ -45,8 +45,8 @@
     display: flex;
     gap: 0px;
     flex-wrap: wrap;
-    background: #17171a;
-    border: 1px solid #2a2a2e;
+    background: #000000;
+    border: 1px solid #000000;
     border-radius: 0px;
     padding: 4px 6px;
   }
@@ -57,24 +57,24 @@
   }
   .msg-time {
     font-size: 10px;
-    color: #55555c;
+    color: #000000;
   }
   #log:empty::before {
     content: "no messages yet — pick some glyphs below and send one";
-    color: #55555c;
+    color: #000000;
     font-size: 13px;
   }
 
   /* ---- Composer tray ---- */
   #tray-wrap {
     border-bottom: 1px solid #2a2a2e;
-    background: #111113;
+    background: #000000;
   }
   #tray {
     min-height: 46px;
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 0px;
     padding: 6px 10px;
     flex-wrap: wrap;
   }
@@ -88,9 +88,9 @@
   }
   #tray img:hover { transform: scale(1.15); opacity: 0.7; }
   #tray:empty::before {
-    content: "tap glyphs below to build a message";
+   /* content: "tap glyphs below to build a message";*/
     color: #55555c;
-    font-size: 13px;
+    font-size: 0px;
     padding-left: 4px;
   }
   #tray-controls {
