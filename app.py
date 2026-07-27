@@ -44,7 +44,7 @@ def api_glyphs():
 @app.route('/api/send', methods=['POST'])
 def api_send():
     data = request.get_json(silent=True) or {}
-    sender = (data.get('sender') or 'anonim').strip()[:40]
+    sender = (data.get('sender') or '').strip()[:40]
     glyphs = data.get('glyphs') or []
 
     # Validate: must be a non-empty list of known glyph filenames
@@ -57,7 +57,7 @@ def api_send():
 
     msg = {
         "id": next(_id_counter),
-        "sender": sender or 'anonim',
+        "sender": sender or '',
         "glyphs": glyphs,
         "ts": time.time(),
     }
