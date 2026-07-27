@@ -259,7 +259,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sender: nameInput.value || 'anonim',
+          sender: nameInput.value || '',
           glyphs: composed,
         }),
       });
