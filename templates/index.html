@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>glyph dünyası</title>
+<style>
+  :root {
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: #0b0b0d;
+    color: #e8e8e8;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  /* ---- Message log (top, scrollable) ---- */
+  #log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px 8px;
+    border-bottom: 1px solid #2a2a2e;
+  }
+  .msg-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .msg-sender {
+    font-size: 12px;
+    color: #8a8a92;
+    min-width: 70px;
+  }
+  .msg-glyphs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    background: #17171a;
+    border: 1px solid #2a2a2e;
+    border-radius: 8px;
+    padding: 4px 6px;
+  }
+  .msg-glyphs img {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+  }
+  .msg-time {
+    font-size: 10px;
+    color: #55555c;
+  }
+  #log:empty::before {
+    content: "no messages yet — pick some glyphs below and send one";
+    color: #55555c;
+    font-size: 13px;
+  }
+
+  /* ---- Composer tray ---- */
+  #tray-wrap {
+    border-bottom: 1px solid #2a2a2e;
+    background: #111113;
+  }
+  #tray {
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    flex-wrap: wrap;
+  }
+  #tray img {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: transform 100ms ease;
+  }
+  #tray img:hover { transform: scale(1.15); opacity: 0.7; }
+  #tray:empty::before {
+    content: "tap glyphs below to build a message";
+    color: #55555c;
+    font-size: 13px;
+    padding-left: 4px;
+  }
+  #tray-controls {
+    display: flex;
+    gap: 8px;
+    padding: 0 10px 8px;
+  }
+  #tray-controls input[type=text] {
+    flex: 0 0 140px;
+    background: #1c1c20;
+    border: 1px solid #333338;
+    color: #e8e8e8;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+  #send-btn, #clear-btn {
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  #send-btn {
+    background: #4a7dfc;
+    color: white;
+  }
+  #send-btn:disabled {
+    background: #2a2a2e;
+    color: #666;
+    cursor: default;
+  }
+  #clear-btn {
+    background: #2a2a2e;
+    color: #ccc;
+  }
+
+  /* ---- Glyph gallery (bottom, scrollable) ---- */
+  #gallery {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    padding: 8px;
+    gap: 2px;
+  }
+  #gallery img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: transform 100ms ease, background 100ms ease;
+  }
+  #gallery img:hover {
+    transform: scale(1.2);
+    background: #1c1c20;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="log"></div>
+
+  <div id="tray-wrap">
+    <div id="tray"></div>
+    <div id="tray-controls">
+      <input type="text" id="sender-name" placeholder="your name" maxlength="40">
+      <button id="send-btn" disabled>send</button>
+      <button id="clear-btn">clear</button>
+    </div>
+  </div>
+
+  <div id="gallery">
+    {% for image in images %}
+      <img src="{{ url_for('image', filename=image) }}" alt="{{ image }}" data-glyph="{{ image }}">
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+(() => {
+  const gallery = document.getElementById('gallery');
+  const tray = document.getElementById('tray');
+  const log = document.getElementById('log');
+  const sendBtn = document.getElementById('send-btn');
+  const clearBtn = document.getElementById('clear-btn');
+  const nameInput = document.getElementById('sender-name');
+
+  // current message being composed: an ordered array of glyph filenames
+  let composed = [];
+  let lastSeenId = 0;
+  let polling = false;
+
+  // remember the name locally so you don't retype it every time
+  nameInput.value = localStorage.getItem('glyph_sender_name') || '';
+  nameInput.addEventListener('input', () => {
+    localStorage.setItem('glyph_sender_name', nameInput.value);
+  });
+
+  function renderTray() {
+    tray.innerHTML = '';
+    composed.forEach((filename, idx) => {
+      const img = document.createElement('img');
+      img.src = `/static/images/${filename}`;
+      img.alt = filename;
+      img.title = 'tap to remove';
+      img.addEventListener('click', () => {
+        composed.splice(idx, 1);
+        renderTray();
+      });
+      tray.appendChild(img);
+    });
+    sendBtn.disabled = composed.length === 0;
+  }
+
+  gallery.addEventListener('click', (e) => {
+    const img = e.target.closest('img[data-glyph]');
+    if (!img) return;
+    composed.push(img.dataset.glyph);
+    renderTray();
+  });
+
+  clearBtn.addEventListener('click', () => {
+    composed = [];
+    renderTray();
+  });
+
+  function addMessageToLog(msg) {
+    const row = document.createElement('div');
+    row.className = 'msg-row';
+
+    const sender = document.createElement('div');
+    sender.className = 'msg-sender';
+    sender.textContent = msg.sender;
+
+    const glyphs = document.createElement('div');
+    glyphs.className = 'msg-glyphs';
+    msg.glyphs.forEach((filename) => {
+      const img = document.createElement('img');
+      img.src = `/static/images/${filename}`;
+      img.alt = filename;
+      glyphs.appendChild(img);
+    });
+
+    const time = document.createElement('div');
+    time.className = 'msg-time';
+    const d = new Date(msg.ts * 1000);
+    time.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    row.appendChild(sender);
+    row.appendChild(glyphs);
+    row.appendChild(time);
+    log.appendChild(row);
+
+    const wasNearBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 120;
+    if (wasNearBottom) log.scrollTop = log.scrollHeight;
+  }
+
+  async function sendMessage() {
+    if (composed.length === 0) return;
+    sendBtn.disabled = true;
+    try {
+      const res = await fetch('/api/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sender: nameInput.value || 'anonim',
+          glyphs: composed,
+        }),
+      });
+      if (res.ok) {
+        composed = [];
+        renderTray();
+      }
+    } catch (err) {
+      console.error('send failed', err);
+      sendBtn.disabled = composed.length === 0;
+    }
+  }
+  sendBtn.addEventListener('click', sendMessage);
+
+  async function pollMessages() {
+    if (polling) return;
+    polling = true;
+    try {
+      const res = await fetch(`/api/messages?since=${lastSeenId}`);
+      if (res.ok) {
+        const newMsgs = await res.json();
+        newMsgs.forEach((msg) => {
+          addMessageToLog(msg);
+          lastSeenId = Math.max(lastSeenId, msg.id);
+        });
+      }
+    } catch (err) {
+      // network hiccup, just retry on the next tick
+    } finally {
+      polling = false;
+    }
+  }
+
+  renderTray();
+  pollMessages();
+  setInterval(pollMessages, 1500);
+})();
+</script>
+</body>
+</html>
