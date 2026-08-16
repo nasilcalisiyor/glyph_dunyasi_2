@@ -32,7 +32,7 @@
   .msg-row {
     display: flex;
     align-items: baseline;
-    gap: 8px;
+    gap: 0px;
     margin-bottom: 10px;
     flex-wrap: wrap;
   }
@@ -51,13 +51,13 @@
     padding: 4px 6px;
   }
   .msg-glyphs img {
-    width: 28px;
-    height: 28px;
+    width: 50px;
+    height: 50px;
     object-fit: contain;
   }
   .msg-time {
     font-size: 10px;
-    color: #000000;
+    color: #6a6a6a;
   }
   #log:empty::before {
     content: "no messages yet — pick some glyphs below and send one";
@@ -79,8 +79,8 @@
     flex-wrap: wrap;
   }
   #tray img {
-    width: 34px;
-    height: 34px;
+    width: 50px;
+    height: 50px;
     object-fit: contain;
     cursor: pointer;
     border-radius: 4px;
@@ -89,7 +89,7 @@
   #tray img:hover { transform: scale(1.15); opacity: 0.7; }
   #tray:empty::before {
     content: "tap glyphs below to build a message";
-    color: #4f4f58;
+    color: #afafb2;
     font-size: 13px;
     padding-left: 4px;
   }
@@ -240,7 +240,15 @@
     const time = document.createElement('div');
     time.className = 'msg-time';
     const d = new Date(msg.ts * 1000);
-    time.textContent = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (isToday) {
+      time.textContent = timeStr;
+    } else {
+      const dateStr = d.toLocaleDateString([], { day: '2-digit', month: 'short' });
+      time.textContent = `${dateStr} ${timeStr}`;
+    }
 
     row.appendChild(sender);
     row.appendChild(glyphs);
@@ -274,6 +282,8 @@
   }
   sendBtn.addEventListener('click', sendMessage);
 
+  let isInitialLoad = true;
+
   async function pollMessages() {
     if (polling) return;
     polling = true;
@@ -285,6 +295,12 @@
           addMessageToLog(msg);
           lastSeenId = Math.max(lastSeenId, msg.id);
         });
+        if (isInitialLoad) {
+          // Always jump to the newest message on first load, regardless
+          // of the near-bottom heuristic used for later live updates.
+          log.scrollTop = log.scrollHeight;
+          isInitialLoad = false;
+        }
       }
     } catch (err) {
       // network hiccup, just retry on the next tick
