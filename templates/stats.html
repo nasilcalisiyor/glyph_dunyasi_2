@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>glyph dünyası — usage stats</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: #0b0b0d;
+    color: #e8e8e8;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    border-bottom: 1px solid #2a2a2e;
+  }
+  header h1 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+  }
+  header a {
+    color: #4a7dfc;
+    text-decoration: none;
+    font-size: 13px;
+  }
+  header a:hover { text-decoration: underline; }
+
+  #list {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 16px;
+  }
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 6px;
+    border-bottom: 1px solid #1c1c20;
+  }
+  .rank {
+    width: 24px;
+    text-align: right;
+    color: #55555c;
+    font-size: 12px;
+  }
+  .row img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    background: #17171a;
+    border-radius: 6px;
+    padding: 3px;
+  }
+  .bar-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bar-track {
+    flex: 1;
+    height: 8px;
+    background: #17171a;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: #4a7dfc;
+    border-radius: 4px;
+  }
+  .count {
+    width: 36px;
+    text-align: right;
+    font-size: 13px;
+    color: #ccc;
+    font-variant-numeric: tabular-nums;
+  }
+  .row.unused .count { color: #55555c; }
+  .row.unused .bar-fill { background: #2a2a2e; }
+
+  #empty {
+    text-align: center;
+    color: #55555c;
+    font-size: 13px;
+    padding: 40px 0;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>glyph usage</h1>
+  <a href="/">← back to chat</a>
+</header>
+
+<div id="list"></div>
+
+<script>
+(() => {
+  const list = document.getElementById('list');
+
+  async function loadStats() {
+    let data = [];
+    try {
+      const res = await fetch('/api/glyph-usage');
+      if (res.ok) data = await res.json();
+    } catch (err) {
+      list.innerHTML = '<div id="empty">could not load stats</div>';
+      return;
+    }
+
+    if (data.length === 0) {
+      list.innerHTML = '<div id="empty">no glyphs found</div>';
+      return;
+    }
+
+    const maxCount = Math.max(...data.map(([, count]) => count), 1);
+    list.innerHTML = '';
+
+    data.forEach(([filename, count], idx) => {
+      const row = document.createElement('div');
+      row.className = 'row' + (count === 0 ? ' unused' : '');
+
+      const rank = document.createElement('div');
+      rank.className = 'rank';
+      rank.textContent = idx + 1;
+
+      const img = document.createElement('img');
+      img.src = `/static/images/${filename}`;
+      img.alt = filename;
+
+      const barWrap = document.createElement('div');
+      barWrap.className = 'bar-wrap';
+
+      const barTrack = document.createElement('div');
+      barTrack.className = 'bar-track';
+      const barFill = document.createElement('div');
+      barFill.className = 'bar-fill';
+      barFill.style.width = `${(count / maxCount) * 100}%`;
+      barTrack.appendChild(barFill);
+
+      const countLabel = document.createElement('div');
+      countLabel.className = 'count';
+      countLabel.textContent = count;
+
+      barWrap.appendChild(barTrack);
+      barWrap.appendChild(countLabel);
+
+      row.appendChild(rank);
+      row.appendChild(img);
+      row.appendChild(barWrap);
+      list.appendChild(row);
+    });
+  }
+
+  loadStats();
+})();
+</script>
+</body>
+</html>

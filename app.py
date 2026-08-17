@@ -87,6 +87,8 @@ def api_send():
     messages.append(msg)
     if len(messages) > MAX_MESSAGES:
         del messages[: len(messages) - MAX_MESSAGES]
+    
+    record_usage(glyphs)    
 
     return jsonify(msg)
 
