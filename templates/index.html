@@ -21,6 +21,18 @@
     flex-direction: column;
     height: 100%;
   }
+  #top-bar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 6px 12px;
+    border-bottom: 1px solid #2a2a2e;
+}
+#top-bar a {
+    color: #4a7dfc;
+    text-decoration: none;
+    font-size: 12px;
+}
+#top-bar a:hover { text-decoration: underline; }
 
   /* ---- Message log (top, scrollable) ---- */
   #log {
@@ -154,6 +166,9 @@
 </head>
 <body>
 <div id="app">
+  <div id="top-bar">
+    <a href="/stats">glyph usage stats →</a>
+  </div>
   <div id="log"></div>
 
   <div id="tray-wrap">

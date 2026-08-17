@@ -2,6 +2,7 @@ from flask import Flask, render_template, send_from_directory, request, jsonify
 import os
 import time
 import itertools
+import random
 
 app = Flask(__name__)
 
@@ -15,6 +16,9 @@ messages = []
 _id_counter = itertools.count(1)
 MAX_MESSAGES = 500  # simple cap so this doesn't grow forever
 
+# Usage counts per glyph, kept in memory only (resets when the server restarts).
+# {filename: count}
+glyph_usage_counts = {}
 
 def get_images():
     if not os.path.exists(IMAGE_FOLDER):
@@ -24,10 +28,16 @@ def get_images():
         if f.lower().endswith(('png', 'jpg', 'jpeg', 'gif'))
     )
 
+def record_usage(glyphs):
+    """Increment the in-memory usage count for each glyph in this message."""
+    for filename in glyphs:
+        glyph_usage_counts[filename] = glyph_usage_counts.get(filename, 0) + 1
+
 
 @app.route('/')
 def index():
     images = get_images()
+    random.shuffle(images)
     return render_template('index.html', images=images)
 
 
@@ -39,6 +49,19 @@ def image(filename):
 @app.route('/api/glyphs')
 def api_glyphs():
     return jsonify(get_images())
+
+@app.route('/api/glyph-usage')
+def api_glyph_usage():
+    """Usage count for every glyph (including never-used ones), most-used first."""
+    all_images = get_images()
+    full_counts = {filename: glyph_usage_counts.get(filename, 0) for filename in all_images}
+    ranked = sorted(full_counts.items(), key=lambda pair: pair[1], reverse=True)
+    return jsonify(ranked)
+
+
+@app.route('/stats')
+def stats():
+    return render_template('stats.html')
 
 
 @app.route('/api/send', methods=['POST'])
